@@ -9,3 +9,7 @@
 - [ ] Pegar outras informações do usuário batendo na API do GitHub (função `fetch` do JavaScript)
 
 - [ ] Colocar algo divertido na página 404.js da sua pasta pages
+
+- [ ] Colocar o botão de OK para enviar a mensagem
+
+- [ ] Colocar um botão de apagar mensagem! Dica: use o filter
