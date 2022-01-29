@@ -1,19 +1,60 @@
 import { Box, Text, TextField, Image, Button } from "@skynexui/components";
 import React from "react";
 import appConfig from "../config.json";
+import { useRouter } from "next/router";
+import { createClient } from "@supabase/supabase-js";
+import { ButtonSendSticker } from "../src/components/ButtonSendStick";
+
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzQ4NjA4MywiZXhwIjoxOTU5MDYyMDgzfQ.WR1DVy8vUmrYRk4YIS8h5tHOFaSlEPf946QqiIzz7r4";
+const SUPABASE_URL = "https://dkwviyspbbdetpuxcjzp.supabase.co";
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function listenMessageInRealtime(addMessage) {
+  return supabaseClient
+    .from("messages")
+    .on("INSERT", (responseInRealtime) => {
+      addMessage(responseInRealtime.new);
+    })
+    .subscribe();
+}
 
 export default function ChatPage() {
+  const router = useRouter();
+  const userLogin = router.query.username;
   const [message, setMessage] = React.useState("");
   const [messageList, setMessageList] = React.useState([]);
 
+  React.useEffect(() => {
+    supabaseClient
+      .from("messages")
+      .select("*")
+      .then(({ data }) => {
+        setMessageList(data);
+      });
+
+    const subscription = listenMessageInRealtime((newMessage) => {
+      setMessageList((currentValue) => {
+        return [newMessage, ...currentValue];
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   function handleNewMessage(newMessage) {
     const message = {
-      id: messageList.length + 1,
-      from: "vanessametonini",
+      from: userLogin,
       text: newMessage,
     };
 
-    setMessageList([message, ...messageList]);
+    supabaseClient
+      .from("messages")
+      .insert([message])
+      .order("id", { ascending: false });
+
     setMessage("");
   }
 
@@ -90,6 +131,11 @@ export default function ChatPage() {
                 color: appConfig.theme.colors.neutrals[200],
               }}
             />
+            <ButtonSendSticker
+              onStickerClick={(sticker) => {
+                handleNewMessage(":sticker: " + sticker);
+              }}
+            />
           </Box>
         </Box>
       </Box>
@@ -161,7 +207,7 @@ function MessageList(props) {
                   display: "inline-block",
                   marginRight: "8px",
                 }}
-                src={`https://github.com/vanessametonini.png`}
+                src={`https://github.com/${message.from}.png`}
               />
               <Text tag="strong">{message.from}</Text>
               <Text
@@ -175,6 +221,12 @@ function MessageList(props) {
                 {new Date().toLocaleDateString()}
               </Text>
             </Box>
+            {message.text.startsWith(":sticker:") ? (
+              <Image src={message.text.replace(":sticker:", "")} />
+            ) : (
+              message.text
+            )}
+
             {message.text}
           </Text>
         );
